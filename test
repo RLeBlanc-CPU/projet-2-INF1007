@@ -1,0 +1,59 @@
+import os
+
+from Data import charger_donnees, examiner_donnees, creer_graphique_par_heure
+
+
+def tester_code() -> None:
+    """
+    Vérifie les fonctions du projet et enregistre le graphique dans le dossier
+    du projet pour pouvoir le retrouver après le test.
+    """
+    dossier_projet = os.path.dirname(os.path.abspath(__file__))
+    chemin_csv = os.path.join(
+        dossier_projet,
+        "bike+sharing+dataset",
+        "hour.csv",
+    )
+
+    donnees = charger_donnees(chemin_csv)
+
+    colonnes_a_exclure = [
+        "windspeed",
+        "dteday",
+        "atemp",
+        "casual",
+        "registered",
+        "yr",
+    ]
+
+    for nom_colonne in colonnes_a_exclure:
+        assert nom_colonne not in donnees.columns, (
+            f"La colonne {nom_colonne} aurait dû être exclue."
+        )
+
+    assert len(donnees) == 17379, "Le nombre de lignes chargées est inattendu."
+
+    chemin_inexistant = os.path.join(
+        dossier_projet,
+        "fichier_qui_nexiste_pas.csv",
+    )
+
+    try:
+        charger_donnees(chemin_inexistant)
+    except FileNotFoundError:
+        pass
+    else:
+        raise AssertionError("Un fichier absent aurait dû provoquer une erreur.")
+
+    chemin_image = os.path.join(dossier_projet, "graphique_test.png")
+    creer_graphique_par_heure(donnees, chemin_image)
+
+    assert os.path.isfile(chemin_image), "Le graphique n'a pas été créé."
+    print(f"Graphique créé ici : {chemin_image}")
+
+    examiner_donnees(donnees)
+
+    print("Toutes les vérifications ont réussi.")
+
+
+tester_code()
