@@ -12,7 +12,6 @@ colonnes_exclues = [
     "casual",
     "registered",
     "yr",
-    "cnt",
 ]
 
 print("hello world")
