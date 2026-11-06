@@ -4,12 +4,15 @@ import matplotlib.pyplot as plt
 from pandas.api.types import is_numeric_dtype
 
 colonnes_exclues = [
+    "instant",
     "windspeed",
     "dteday",
+    "season",
     "atemp",
     "casual",
     "registered",
     "yr",
+    "cnt",
 ]
 
 print("hello world")
