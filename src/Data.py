@@ -8,7 +8,7 @@ colonnes_exclues = [
     "windspeed",
     "dteday",
     "season",
-    "atemp",
+    "temp",
     "casual",
     "registered",
     "yr",
