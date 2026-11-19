@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 # ttk fournit des widgets, genre des étiquettes, champs, listes, etc.
 from tkinter import messagebox, ttk
-
+import traceback
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -19,7 +19,7 @@ class BikeDataForm(tk.Tk):
     """Formulaire qui entraîne le modèle puis prédit le nombre de locations."""
 
     # le constructeur
-    def __init__(self):
+    def __init__(self, modele, cible):
         # rappel : super() permet d'acceder à la classe parent
         super().__init__()
         # Le titre de la fenêtre.
@@ -46,15 +46,15 @@ class BikeDataForm(tk.Tk):
 
         # Le modèle est préparé au démarrage pour que le bouton puisse ensuite
         # effectuer une prédiction à partir des choix de l'utilisateur.
-        self.modele = None
-        self.distribution_cible = None
+        self.modele = modele
+        self.distribution_cible = cible
         self.chemin_historique = Path(__file__).resolve().parent / "historique_predictions.csv"
-        self.message_modele = tk.StringVar(value="Chargement des données et entraînement du modèle…")
+        self.message_modele = tk.StringVar(value="")
 
         # Cela appelle la methode qui gère le placement de l'interface et tout
         self._construire_interface()
         # Ici, ca prepare le modèle après la création des champs
-        self.after(100, self._preparer_modele)
+        #self.after(100, self._preparer_modele)
 
     # Cette méthode construit l'interface et ajoute le bouton de prédiction
     def _construire_interface(self):
@@ -108,7 +108,7 @@ class BikeDataForm(tk.Tk):
         )
         # le bouton
         self.bouton_prediction = ttk.Button(
-            self, text="Prédire", command=self._predire, state="disabled"
+            self, text="Prédire", command=self._predire, state="enabled"
         )
         # position du bouton
         self.bouton_prediction.grid(row=10, column=0, columnspan=3, sticky="ew", pady=6)
@@ -219,10 +219,9 @@ class BikeDataForm(tk.Tk):
                 raise ValueError("L'heure doit être comprise entre 0 et 23.")
             if not 0 <= valeurs["weekday"] <= 6:
                 raise ValueError("Le jour de la semaine doit être compris entre 0 et 6.")
-
-            # Utilise exactement les mêmes colonnes et le même ordre que X_train.
-            entree = pd.DataFrame([valeurs], columns=self.modele.donnees.columns)
-            prediction = self.modele.model.predict(entree)[0]
+        
+            print("Predicting using model "+ str(self.modele))
+            prediction = self.modele.predire(valeurs["mnth"], valeurs["hr"], valeurs["holiday"], valeurs["weekday"], valeurs["workingday"], valeurs["weathersit"], valeurs["atemp"], valeurs["hum"])
             self.resultat.configure(text=f"Locations prévues : {prediction:.0f}")
             # Enregistremetn des donnees
             self._enregistrer_prediction(valeurs, prediction)
@@ -233,6 +232,7 @@ class BikeDataForm(tk.Tk):
         except (ValueError, tk.TclError) as erreur:
             messagebox.showerror("Valeur invalide", str(erreur), parent=self)
         except Exception as erreur:
+            traceback.print_exc() 
             messagebox.showerror("Erreur de prédiction", str(erreur), parent=self)
 
     # ajout d'une ligne à l'historique CSV.

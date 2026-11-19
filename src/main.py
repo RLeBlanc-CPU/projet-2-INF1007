@@ -3,16 +3,28 @@ from pathlib import Path # Cet outil viens déjà intégré dans Python. Il perm
 
 import pandas as pd # Même chose que dans Data 
 from Data import charger_donnees, separer_donnees 
+from modele import Modele
+import os
+from interface import BikeDataForm
 
 
-if __name__ == "__main__": # Basically, ça dit: 
-    # "Si ce fichier est le programme lancé directement, exécute le bloc qui suit."
-    
-    dossier_projet = Path(__file__).resolve().parent
-    # La fonction resolve() permet d'obtenir le chemin complet, et le parent permet de
-    # désigner le dossier qui le contient. Un petit racourcis basically
-
-    chemin_csv = dossier_projet / "donnees" / "hour.csv"
-    # charger_donnees prend le chemin, exprimé en str
-
+if __name__ == "__main__": 
    
+    cible = None
+    modele = Modele()
+    if os.path.isfile(modele.trouver_modele()):
+        modele.charger()
+    else:
+        donnees = charger_donnees()
+        donnees_separpees = separer_donnees(donnees)
+        modele.donnees = donnees_separpees[0]
+        modele.cible = donnees_separpees[2]
+        modele.entrainer()
+    cible = charger_donnees()["cnt"]
+
+    interface = BikeDataForm(modele, cible)
+    interface.mainloop()
+
+ 
+
+

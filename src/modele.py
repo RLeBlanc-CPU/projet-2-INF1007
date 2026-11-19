@@ -16,14 +16,14 @@ class Modele:
     def entrainer(self, seed=42):  
         self.model = RandomForestRegressor(n_estimators=300, random_state=seed, n_jobs=-1)
         self.model.fit(self.donnees, self.cible)
-        joblib.dump(self.model, self._trouver_modele())
+        joblib.dump(self.model, self.trouver_modele())
       
     # Charge un ancient modèle 
     def charger(self): 
-        self.model = joblib.load(self._trouver_modele())
+        self.model = joblib.load(self.trouver_modele())
        
     # Fonction helper
-    def _trouver_modele(self):
+    def trouver_modele(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
         model_dir = os.path.join(project_root, "modele")
@@ -31,10 +31,10 @@ class Modele:
         output_file = os.path.join(model_dir, "modele.joblib")
         return output_file
 
-    def predire(self, weekday, workingday, weathersit, atemp, hum):
+    def predire(self, mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum):
         if self.model == None:
             raise IOError("Le modele est nul") # remplacer avec exception custom
-        return self.model.predict([[weekday, workingday, weathersit, atemp, hum]])[0]
+        return self.model.predict([[mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum]])[0]
 
     def evaluer(self, donnees_test, cible_test):
         if self.model is None:
@@ -45,3 +45,6 @@ class Modele:
             "RMSE": np.sqrt(mean_squared_error(cible_test, predictions)),
             "R2": r2_score(cible_test, predictions),
         }
+
+    def __str__(self):
+        return str(self.model)
