@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from pandas.api.types import is_numeric_dtype
+from sklearn.model_selection import train_test_split
 
 colonnes_exclues = [
     "instant",
@@ -14,7 +15,7 @@ colonnes_exclues = [
     "yr",
 ]
 
-print("hello world")
+VARIABLE_CIBLE = "cnt"
 
 def charger_donnees(chemin_csv: str) -> pd.DataFrame:
     """
@@ -40,6 +41,7 @@ def charger_donnees(chemin_csv: str) -> pd.DataFrame:
 
 def examiner_donnees(donnees: pd.DataFrame) -> None:
     """
+    Fonction de test, effacer plus tard
     Cette partie du code affiche les types, les valeurs manquantes et les valeurs
     atypiques du tableau.
     Je mets None comme retour, car ce sont des prints.
@@ -74,6 +76,20 @@ def examiner_donnees(donnees: pd.DataFrame) -> None:
 )
             # Va venir mesurer la dispersion des 50 % de données centrales
             ecart_interquartile = troisieme_quartile - premier_quartile
+
+    def separer_donnees( donnees: pd.DataFrame ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+        
+        # Prend toutes les colonnes, sauf la variable cible
+        x = donnees.drop(columns=[VARIABLE_CIBLE])
+        y = donnees[VARIABLE_CIBLE]
+
+    # Ça appelle train_test_split, et ensuite range ses quatre résultats
+    # dans quatre variables. L’ordre est très important pour ne pas mêler
+    # les données : les deux premiers contiennent des différents facteurs,
+    # les deux autres (en ordre) contiennent les valeurs de la cible associées.
+        X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42 )
+
+        return X_train, X_test, y_train, y_test
 
 
 ## Reste a valider (ChatGPT)

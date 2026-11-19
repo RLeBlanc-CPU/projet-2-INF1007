@@ -10,7 +10,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from Data import charger_donnees
-from main import separer_donnees
+from Data import separer_donnees
 from modele import Modele
 
 
@@ -21,7 +21,6 @@ class BikeDataForm(tk.Tk):
     # le constructeur
     def __init__(self):
         # rappel : super() permet d'acceder à la classe parent
-        # Rappel : super() permet d'accéder à la classe parent.
         super().__init__()
         # Le titre de la fenêtre.
         # le titre
