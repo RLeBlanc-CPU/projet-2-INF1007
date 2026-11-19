@@ -42,44 +42,6 @@ def charger_donnees() -> pd.DataFrame:
 
     return donnees_filtree
 
-def examiner_donnees(donnees: pd.DataFrame) -> None:
-    """
-    Fonction de test, effacer plus tard
-    Cette partie du code affiche les types, les valeurs manquantes et les valeurs
-    atypiques du tableau.
-    Je mets None comme retour, car ce sont des prints.
-    Afin de mieux comprendre "donnees", je recommande fortement de le consulter
-    en faisant Ctrl + click dessus
-    """
-    # Afficher le type de données utilisé pour chacunes des colonnes
-    print("Types des colonnes :")
-    print(donnees.dtypes)
-
-    # Cela comtpe le nombre de cellules remplies, puis soustrait ce nombre du total de lignes
-    print("\nValeurs manquantes par colonne :")
-    nombre_de_lignes = len(donnees)
-    for nom_colonne in donnees.columns: # Parcour chaque colonne
-        nombre_de_cellules_remplies = donnees[nom_colonne].count() # compte les colonnes remplies
-        nombre_de_valeurs_manquantes = nombre_de_lignes - nombre_de_cellules_remplies # soustraction
-        print(f"{nom_colonne} : {nombre_de_valeurs_manquantes}")
-
-    """
-        Pour cette section, j'ai utilisé le concept de quantiles afin de mieux séparer les
-        donées. Exemple: 25% des jours sont des jours de pluies. Cela permettra par la suite
-        de mieux orienter les données pour plus tard, et d'ainsi avoir une meilleure idée
-        de sa répartition.
-    """
-    # Calculer les limites de l'écart interquartile pour chaque colonne numérique.
-    print("\nValeurs atypiques selon la règle de l'écart interquartile :")
-    for nom_colonne in donnees.columns:
-        if is_numeric_dtype(donnees[nom_colonne]): # Ici, ca vérifie si la colonne a des nombres
-            premier_quartile = donnees[nom_colonne].quantile(0.25)
-            troisieme_quartile = donnees[nom_colonne].quantile(0.75)
-            print(f"{nom_colonne} : "f"premier quartile = {premier_quartile}, "f"troisième quartile = {troisieme_quartile}"
-)
-            # Va venir mesurer la dispersion des 50 % de données centrales
-            ecart_interquartile = troisieme_quartile - premier_quartile
-
 def separer_donnees( donnees: pd.DataFrame ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         
         # Prend toutes les colonnes, sauf la variable cible

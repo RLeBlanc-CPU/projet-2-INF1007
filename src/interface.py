@@ -53,8 +53,6 @@ class BikeDataForm(tk.Tk):
 
         # Cela appelle la methode qui gère le placement de l'interface et tout
         self._construire_interface()
-        # Ici, ca prepare le modèle après la création des champs
-        #self.after(100, self._preparer_modele)
 
     # Cette méthode construit l'interface et ajoute le bouton de prédiction
     def _construire_interface(self):
@@ -168,31 +166,6 @@ class BikeDataForm(tk.Tk):
             row=ligne, column=2, sticky="w", padx=(8, 0)
         )
         # Affiche un rappel sur le format ou l'échelle attendue.
-
-    # Charge hour.csv et entraîne le modèle existant
-    def _preparer_modele(self):
-        """Charge hour.csv et entraîne le modèle avec les fonctions existantes."""
-        try:
-            chemin_csv = Path(
-                r"C:\Users\esteb\Documents\Universite\Python\Projet_2\projet-2-INF1007\donnees"
-            ) / "hour.csv" # chemin précis, car l'autre méthode ne m'a pas marché cette fois-ci
-            donnees = charger_donnees(str(chemin_csv))
-            self.distribution_cible = donnees["cnt"]
-            X_train, _X_test, y_train, _y_test = separer_donnees(donnees) # Appelle separer_donnees
-            self.modele = Modele(X_train, y_train) # Crée un pbjet Modele
-            self.modele.entrainer() # entraine le modele
-        except Exception as erreur: # Au cas ou ca ne marche pas
-            self.message_modele.set("Le modèle n'a pas pu être préparé.")
-            messagebox.showerror(
-                "Erreur de préparation",
-                "Vérifiez que le dossier bike+sharing+dataset/hour.csv est présent "
-                "et que les dépendances sont installées.\n\nDétail : " + str(erreur),
-                parent=self,
-            )
-            return
-
-        self.message_modele.set("Modèle prêt. Vous pouvez demander une prédiction.")
-        self.bouton_prediction.configure(state="normal")
 
     # Ici, ca récupère les valeurs et demande la prédiction au modèle
     def _predire(self):
