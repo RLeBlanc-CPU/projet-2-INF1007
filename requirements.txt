@@ -1,0 +1,11 @@
+# Prédiction des locations de vélos (Bike Sharing Dataset)
+# Python 3.10+ recommandé.
+# Tkinter (interface) fait partie de la bibliothèque standard de Python :
+#   - Windows / macOS : inclus avec l'installateur officiel
+#   - Linux (Debian/Ubuntu) : sudo apt install python3-tk
+
+numpy>=2.0
+pandas>=2.2
+matplotlib>=3.9      # graphique intégré à Tkinter (backend TkAgg)
+scikit-learn==1.9.1  # même version que celle utilisée pour entraîner modele.joblib
+joblib>=1.4          # sauvegarde / chargement du modèle
