@@ -25,9 +25,9 @@ def charger_donnees() -> pd.DataFrame:
     les donnes dans "donnees_completes. Puis, la fonction filtre les donnees et retourne 
     les bonnes donnees"
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-    donnees_dir = os.path.join(project_root, "donnees")
+    script_dir = os.path.dirname(os.path.abspath(__file__)) # os.path.abspath transforme __file__ en 
+    project_root = os.path.dirname(script_dir) # dirname conserve uniquement le dossier
+    donnees_dir = os.path.join(project_root, "donnees") # va dans le dossier project_root, puis sélectionne "donnees"
     fichier_csv = os.path.join(donnees_dir, "hour.csv")
 
     fichier_existe = os.path.isfile(fichier_csv)
@@ -38,6 +38,7 @@ def charger_donnees() -> pd.DataFrame:
     with open(fichier_csv, "r", encoding="utf-8", newline="") as f:
         donnees_completes = pd.read_csv(f)
 
+    # retire les colonnes exclues
     donnees_filtree = donnees_completes.drop(columns = colonnes_exclues)
 
     return donnees_filtree
@@ -57,7 +58,7 @@ def separer_donnees( donnees: pd.DataFrame ) -> tuple[pd.DataFrame, pd.DataFrame
     return X_train, X_test, y_train, y_test
 
 
-## Reste a valider (ChatGPT)
+## Reste a valider
 def creer_graphique_par_heure(donnees: pd.DataFrame, chemin_image: str,) -> None:
     heures = donnees.groupby("hr")["cnt"].mean()
 

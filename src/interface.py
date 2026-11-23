@@ -49,7 +49,6 @@ class BikeDataForm(tk.Tk):
         self.modele = modele
         self.distribution_cible = cible
         self.chemin_historique = Path(__file__).resolve().parent / "historique_predictions.csv"
-        self.message_modele = tk.StringVar(value="")
 
         # Cela appelle la methode qui gère le placement de l'interface et tout
         self._construire_interface()
@@ -89,21 +88,15 @@ class BikeDataForm(tk.Tk):
                 "4 — Conditions plus sévères",
             ),
         )
-        # Choisie la première option par défaut
+        # Choisie la première option par défaut, c'est-à-dire "1 — Temps clair ou peu de nuages"
         self.meteo.current(0)
         self.meteo.grid(row=6, column=1, columnspan=2, sticky="w", pady=6)
 
-        # Dans le jeu de données utilisé par votre modèle, la colonne est atemp
-        # (température ressentie), et non temp!!!
         self._ligne_saisie(7, "Température ressentie (atemp)", self.temperature_ressentie,
                            "Normalisée, de 0 à 1")
         # HUMIDITÉ!
         self._ligne_saisie(8, "Humidité (hum)", self.humidite, "Normalisée, de 0 à 1")
 
-        # cela indique si le modèle est prêt pour une prédiction
-        ttk.Label(self, textvariable=self.message_modele, foreground="#555").grid(
-            row=9, column=0, columnspan=3, sticky="w", pady=(12, 4)
-        )
         # le bouton
         self.bouton_prediction = ttk.Button(
             self, text="Prédire", command=self._predire, state="enabled"
@@ -113,15 +106,18 @@ class BikeDataForm(tk.Tk):
         self.resultat = ttk.Label(self, text="", font=("TkDefaultFont", 11, "bold"))
         self.resultat.grid(row=11, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
-        # A REVISER CETTE SECTION : code doit être revérifié dans cette section, je ne maîtrise pas
-        # Matplotlib
-        # le graphique Matplotlib intégré à la fenêtre.
+        # (7 pouces de largeur par 3.2 pouces de hauteur).
+        # dpi=100 définit la résolution à 100 pixels par pouce
         self.figure = Figure(figsize=(7, 3.2), dpi=100)
+        # Ajout d'un sous-graphique (Axes) à la figure. 
+        # (1 ligne, 1 colonne, et on utilise le 1er (le seul) graphique)
         self.axes = self.figure.add_subplot(111)
+        # reprend la ligne 111 pour définir la taille et résolution
         self.canvas_graphique = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas_graphique.get_tk_widget().grid(
             row=12, column=0, columnspan=3, sticky="ew", pady=(10, 4)
-        )
+        ) # grid peut être juste utilisé pour un widget. Hors, canvas_graphique est un objet. 
+        # Donc, get_tk_widget() retourne le widget Tkinter qui contient le graphique Matplotlib
 
         # Ca oouvre la fenêtre qui présente les prédictions sauvegardées
         ttk.Button(self, text="Consulter l’historique", command=self._ouvrir_historique).grid(
@@ -147,12 +143,14 @@ class BikeDataForm(tk.Tk):
         # titre
         ttk.Label(self, text=titre).grid(row=ligne, column=0, sticky="w", pady=6)
         # Le cadre contient les deux choix possibles, 0 et 1.
-        choix = ttk.Frame(self)
+        choix = ttk.Frame(self) # Frame est une sorte de conteneur vide
         choix.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
-        ttk.Radiobutton(choix, text="0 — Non", variable=variable, value=0).pack(
+        ttk.Radiobutton(choix, text="NON !!!", variable=variable, value=0).pack(
             side="left", padx=(0, 12)
         )
-        ttk.Radiobutton(choix, text="1 — Oui", variable=variable, value=1).pack(side="left")
+        ttk.Radiobutton(choix, text="OUI !!!", variable=variable, value=1).pack(side="left")
+        # Radiobutton permet de relier les deux cases au choix. 
+        # Donc, la valeur de choix sera déterminé par la case appuyée
 
     def _ligne_saisie(self, ligne, titre, variable, aide):
         # La fonction qui définit un peu les choses qui seront affiché et entré
@@ -170,7 +168,11 @@ class BikeDataForm(tk.Tk):
     # Ici, ca récupère les valeurs et demande la prédiction au modèle
     def _predire(self):
         try:
-            # La température et l'humidité sont saisies comme nombres normalisés.
+            # La température et l'humidité sont saisies comme nombres normalisés
+            # Rappel : strip() enlève les espaces au début et à la fin, replace() remplace
+            # les "," par des "." au cas ou on veut faire des modifications plus tard, pas de confusion avec
+            # la séparation des données. Le get() va récupèrer le texte saisi dans le champ Tkinter,
+            # puisque ces valeurs sont entrées manuellement
             atemp = float(self.temperature_ressentie.get().strip().replace(",", "."))
             hum = float(self.humidite.get().strip().replace(",", "."))
             if not 0 <= atemp <= 1 or not 0 <= hum <= 1:
