@@ -48,7 +48,7 @@ class BikeDataForm(tk.Tk):
         # effectuer une prédiction à partir des choix de l'utilisateur.
         self.modele = modele
         self.distribution_cible = cible
-        self.chemin_historique = Path(__file__).resolve().parent / "historique_predictions.csv"
+        self.chemin_historique = Path(__file__).resolve().parent.parent / "modele" /  "historique_predictions.csv"
         self.message_modele = tk.StringVar(value="")
 
         # Cela appelle la methode qui gère le placement de l'interface et tout

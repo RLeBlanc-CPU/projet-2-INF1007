@@ -16,10 +16,11 @@ if __name__ == "__main__":
         modele.charger()
     else:
         donnees = charger_donnees()
-        donnees_separpees = separer_donnees(donnees)
-        modele.donnees = donnees_separpees[0]
-        modele.cible = donnees_separpees[2]
+        donnees_separees = separer_donnees(donnees)
+        modele.donnees = donnees_separees[0]
+        modele.cible = donnees_separees[2]
         modele.entrainer()
+        modele.creer_metadonnees(donnees_separees[1], donnees_separees[3])
     cible = charger_donnees()["cnt"]
 
     interface = BikeDataForm(modele, cible)

@@ -8,4 +8,4 @@ numpy>=2.0
 pandas>=2.2
 matplotlib>=3.9      # graphique intégré à Tkinter (backend TkAgg)
 scikit-learn==1.9.1  # même version que celle utilisée pour entraîner modele.joblib
-joblib>=1.4          # sauvegarde / chargement du modèle
+joblib>=1.4 	     # sauvegarde / chargement du modèle
