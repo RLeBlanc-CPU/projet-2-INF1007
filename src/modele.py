@@ -4,30 +4,67 @@ import os
 from exceptions import ModeleIntrouvableError
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
-import json
+
+# Importations pour le décorateur de chronométrage et ses types.
+from functools import wraps
+from time import perf_counter
+from typing import Any, Callable, TypeVar, cast
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+# Décorateur qui mesure et affiche la durée de la fonction.
+def chronometrer(fonction: F) -> F:
+    """Affiche la durée d'exécution de la fonction décorée."""
+    @wraps(fonction) # ChatGPT recommande cette fonction. À valider, je n'ai pas 
+    # trop trop confiance
+    def fonction_mesuree(*args: Any, **kwargs: Any) -> Any:
+        debut = perf_counter()
+        resultat = fonction(*args, **kwargs)
+        duree = perf_counter() - debut
+        print(f"Durée de {fonction.__name__} : {duree:.2f} s")
+        return resultat
+
+    return cast(F, fonction_mesuree)
+
 
 class Modele:
-
-    CATEGORIELLES = ["mnth", "hr", "holiday", "weekday", "workingday", "weathersit"]
-
-    # Initialise le modele. On doit charger un ancient modèle OU entrainer une nouveau modèle avant de prédire
-    def __init__(self, donnees=None, cible=None):
+    # Initialise le modele. On doit charger un ancien modèle OU entraîner un
+    # nouveau modèle avant de prédire.
+    # Ajout du type de retour
+    def __init__(self, donnees=None, cible=None) -> None:
+        """Initialise le modèle avec les données et la cible, si elles sont fournies."""
         self.donnees = donnees
         self.cible = cible
         self.model = None
-   
-    # Entraine le modele sur des nouvelles données
-    def entrainer(self, seed=42):  
-        self.model = RandomForestRegressor(n_estimators=300, random_state=seed, n_jobs=-1)
+
+    # Entraine le modele sur de nouvelles données
+    @chronometrer
+    def entrainer(self, seed: int = 42) -> None:
+        """Entraîne la forêt aléatoire et sauvegarde le modèle."""
+        self.model = RandomForestRegressor(
+            n_estimators=300,
+            random_state=seed,
+            n_jobs=-1,
+        )
         self.model.fit(self.donnees, self.cible)
         joblib.dump(self.model, self.trouver_modele())
-      
-    # Charge un ancient modèle 
-    def charger(self): 
-        self.model = joblib.load(self.trouver_modele())
-       
+
+    # Charge un ancien modèle + lève l'exception personnalisée
+    def charger(self) -> None:
+        """Charge le modèle sauvegardé ou signale si son fichier est absent."""
+        chemin = self.trouver_modele()
+
+        if not os.path.isfile(chemin):
+            raise ModeleIntrouvableError(
+                f"Le fichier du modèle est introuvable : {chemin}"
+            )
+
+        self.model = joblib.load(chemin)
+
     # Fonction helper
-    def trouver_modele(self):
+    def trouver_modele(self) -> str:
+        """Construit et retourne le chemin du fichier du modèle sauvegardé."""
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
         model_dir = os.path.join(project_root, "modele")
@@ -35,50 +72,31 @@ class Modele:
         output_file = os.path.join(model_dir, "modele.joblib")
         return output_file
 
-    def trouver_metadonnees(self):
-        return os.path.join(os.path.dirname(self.trouver_modele()), "metadonnees.json")
+    # MODIFIÉ : ajout des types, d'une docstring et de l'exception personnalisée.
+    def predire(
+        self,
+        mnth: int,
+        hr: int,
+        holiday: int,
+        weekday: int,
+        workingday: int,
+        weathersit: int,
+        atemp: float,
+        hum: float,
+    ) -> float:
+        """ Çaretourne le nombre prédit de locations pour les caractéristiques fournies"""
+        if self.model is None:
+            raise ModeleIntrouvableError("Aucun modèle n'est chargé.")
 
-    # Écrit metadonnees.json : colonnes, valeurs possibles, intervalles et métriques.
-    # À appeler juste après entrainer(), tant que self.donnees est disponible.
-    def creer_metadonnees(self, donnees_test, cible_test):
-        if self.donnees is None:
-            raise ValueError("Les données d'entraînement sont requises pour créer les métadonnées")
+        return self.model.predict(
+            [[mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum]]
+        )[0]
 
-        colonnes = list(self.donnees.columns)
-
-        # Catégorielles : liste triée des valeurs observées (int Python, pas numpy, pour json)
-        categorielles = {
-            c: sorted(self.donnees[c].unique().tolist())
-            for c in colonnes if c in self.CATEGORIELLES
-        }
-        # Numériques : intervalle [min, max] observé
-        numeriques = {
-            c: {"min": float(self.donnees[c].min()), "max": float(self.donnees[c].max())}
-            for c in colonnes if c not in self.CATEGORIELLES
-        }
-        metriques = {nom: float(v) for nom, v in self.evaluer(donnees_test, cible_test).items()}
-
-        metadonnees = {
-            "variable_cible": "cnt",
-            "colonnes": colonnes,
-            "variables_categorielles": categorielles,
-            "variables_numeriques": numeriques,
-            "metriques": metriques,
-        }
-        chemin = self.trouver_metadonnees()
-        with open(chemin, "w", encoding="utf-8") as fichier:
-            json.dump(metadonnees, fichier, ensure_ascii=False, indent=2)
-        return chemin
-
-
-    def predire(self, mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum):
-        if self.model == None:
-            raise IOError("Le modele est nul") # remplacer avec exception custom
-        return self.model.predict([[mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum]])[0]
-
-    def evaluer(self, donnees_test, cible_test):
+    def evaluer(self, donnees_test, cible_test) -> dict[str, float]:
+        """Calcule les métriques MAE, RMSE et R² sur les données de test."""
         if self.model is None:
             self.charger()
+
         predictions = self.model.predict(donnees_test)
         return {
             "MAE": mean_absolute_error(cible_test, predictions),
@@ -86,5 +104,6 @@ class Modele:
             "R2": r2_score(cible_test, predictions),
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Retourne une représentation textuelle du modèle."""
         return str(self.model)

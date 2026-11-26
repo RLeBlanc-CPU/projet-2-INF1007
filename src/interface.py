@@ -1,4 +1,5 @@
 import csv
+import json
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -8,25 +9,37 @@ import traceback
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-
 from Data import charger_donnees
 from Data import separer_donnees
 from modele import Modele
+from exceptions import ModeleIntrouvableError
 
+"""
+Je n'ai pas été capable d'ajouter des commentaires dans les fichiers
+json pour expliquer ce que j'ai fait. Donc, basically, j,ai regroupé les 
+différentes descriptions des champs du fichier interface.py et je les ai
+transféré dans une liste nommée "champs" dans json. Chaque élément dans
+cette liste, en gros, possède les instructions nécessaires pour construire 
+l'interface (contient le type, la valeur initiale, etc). Cependant, à se rappeler 
+que l'execution de ces consignes se fait dans "interface.py".
 
-# Elle hérite de tk.Tk, soit la classe de Tkinter.
-class BikeDataForm(tk.Tk):
-    """Formulaire qui entraîne le modèle puis prédit le nombre de locations."""
+Se rappeler qu'avant, ces champs étaient directement définis dans ce
+fichier. Maintenant, ce fichier sert principalement à lire les données
+json pour ensuite construire l'interface, c'est-à-dire les widgets et tout cela.
+"""
 
-    # le constructeur
+# Cette classe initialise les variables d'interface et les données du formulaire.
+class VariablesForm:
     def __init__(self, modele, cible):
         # rappel : super() permet d'acceder à la classe parent
         super().__init__()
-        # Le titre de la fenêtre.
-        # le titre
-        self.title("Prédiction des locations de vélos")
-        # Cette section permet de calibrer les marges
-        self.configure(padx=18, pady=16)
+
+        chemin_json = Path(__file__).resolve().parent / "interface.json"
+        with chemin_json.open("r", encoding="utf-8") as fichier:
+            configuration = json.load(fichier) # Ici, configuration équivaut au fichier json
+
+        self.champs = configuration["champs"] # Corrspond à "champ" dans le json, comme ca, on 
+        # evitera de tout mélanger si l'on souhaite ajouter quelque chose d'autres
 
         # Les noms et l'ordre de ces caractéristiques correspondent aux colonnes
         # produites par charger_donnees() et utilisées pour entraîner le modèle.
@@ -34,22 +47,38 @@ class BikeDataForm(tk.Tk):
         # Les valeurs ci-dessous sont les valeurs initiales des champs.
         # ici, IntVar permet de conserver une valeur int liée à un widget Tkinter.
         # Ca commence avec des valeurs initiales
-        self.mois = tk.IntVar(value=1)
-        self.heure = tk.IntVar(value=0)
-        self.ferie = tk.IntVar(value=0)
-        self.jour_semaine = tk.IntVar(value=0)
-        self.jour_travaille = tk.IntVar(value=0)
         # StringVar conserve une chaîne de caractères, ici une valeur décimale.
         # StringVar conserve un string. Encore une fois, valeurs initiales
-        self.temperature_ressentie = tk.StringVar(value="0.50")
-        self.humidite = tk.StringVar(value="0.50")
+        for champ in self.champs:
+            type_champ = champ["type"]
+            nom_variable = champ["variable"]
+            valeur_initiale = champ["valeur_initiale"]
+
+            if type_champ in ("spinbox", "binaire"):
+                variable = tk.IntVar(value=valeur_initiale)
+                setattr(self, nom_variable, variable)
+            elif type_champ == "saisie":
+                variable = tk.StringVar(value=valeur_initiale)
+                setattr(self, nom_variable, variable)
 
         # Le modèle est préparé au démarrage pour que le bouton puisse ensuite
         # effectuer une prédiction à partir des choix de l'utilisateur.
         self.modele = modele
         self.distribution_cible = cible
-        self.chemin_historique = Path(__file__).resolve().parent.parent / "modele" /  "historique_predictions.csv"
-        self.message_modele = tk.StringVar(value="")
+        self.chemin_historique = Path(__file__).resolve().parent / "historique_predictions.csv"
+
+
+# Elle hérite de VariablesForm et de tk.Tk, soit la classe de Tkinter
+class BikeDataForm(VariablesForm, tk.Tk):
+    # le constructeur
+    def __init__(self, modele, cible):
+        # rappel : super() permet d'acceder à la classe parent
+        super().__init__(modele, cible)
+        # Le titre de la fenêtre.
+        # le titre
+        self.title("Prédiction des locations de vélos")
+        # Cette section permet de calibrer les marges
+        self.configure(padx=18, pady=16)
 
         # Cela appelle la methode qui gère le placement de l'interface et tout
         self._construire_interface()
@@ -65,45 +94,57 @@ class BikeDataForm(tk.Tk):
         # j'ai déjà travaillé avec des grids au cegep. Cela permet de placer des éléments dans des
         # emplacements spécifiques
 
-        # faire ctr pour comprendre
-        # la structure de _ligne_choix
-        self._ligne_choix(1, "Mois (mnth)", self.mois, 1, 12, "De 1 à 12")
-        self._ligne_choix(2, "Heure (hr)", self.heure, 0, 23, "De 0 à 23")
-        # même principe que _ligne_choix
-        self._ligne_binaire(3, "Jour férié (holiday)", self.ferie)
-        self._ligne_choix(4, "Jour de la semaine (weekday)", self.jour_semaine, 0, 6, "0 à 6")
-        self._ligne_binaire(5, "Jour travaillé (workingday)", self.jour_travaille)
+        # Les champs sont décrits dans interface.json et créés automatiquement.
+        for ligne, champ in enumerate(self.champs, start=1):
+            type_champ = champ["type"]
+            libelle = champ["libelle"]
+            nom_variable = champ["variable"]
 
-        # Section météo
-        ttk.Label(self, text="Météo (weathersit)").grid(row=6, column=0, sticky="w", pady=6) # le sticky permet de localiser à l'interieur de row et column
-        # J'ai fait en sorte que l'utilisateur choisisse ses valeurs, et non qu'il entre les valeurs
-        # pour éviter des erreurs plus tard
-        self.meteo = ttk.Combobox(
-            self,
-            state="readonly", # empêche l'utilisateur de tapper lui-même ses données
-            width=38,
-            values=(
-                "1 — Temps clair ou peu de nuages",
-                "2 — Brume ou temps nuageux",
-                "3 — Pluie ou neige légère",
-                "4 — Conditions plus sévères",
-            ),
-        )
-        # Choisie la première option par défaut
-        self.meteo.current(0)
-        self.meteo.grid(row=6, column=1, columnspan=2, sticky="w", pady=6)
+            if type_champ == "spinbox":
+                self._ligne_choix(
+                    ligne,
+                    libelle,
+                    getattr(self, nom_variable),
+                    champ["minimum"],
+                    champ["maximum"],
+                    champ.get("aide", ""),
+                )
 
-        # Dans le jeu de données utilisé par votre modèle, la colonne est atemp
-        # (température ressentie), et non temp!!!
-        self._ligne_saisie(7, "Température ressentie (atemp)", self.temperature_ressentie,
-                           "Normalisée, de 0 à 1")
-        # HUMIDITÉ!
-        self._ligne_saisie(8, "Humidité (hum)", self.humidite, "Normalisée, de 0 à 1")
+            elif type_champ == "binaire":
+                self._ligne_binaire(
+                    ligne,
+                    libelle,
+                    getattr(self, nom_variable),
+                )
 
-        # cela indique si le modèle est prêt pour une prédiction
-        ttk.Label(self, textvariable=self.message_modele, foreground="#555").grid(
-            row=9, column=0, columnspan=3, sticky="w", pady=(12, 4)
-        )
+            elif type_champ == "saisie":
+                self._ligne_saisie(
+                    ligne,
+                    libelle,
+                    getattr(self, nom_variable),
+                    champ.get("aide", ""),
+                )
+
+            elif type_champ == "liste":
+                ttk.Label(self, text=libelle).grid(
+                    row=ligne, column=0, sticky="w", pady=6
+                )
+
+                self.meteo = ttk.Combobox(
+                    self,
+                    state="readonly", # empêche l'utilisateur de tapper lui-même ses données
+                    width=38,
+                    values=champ["options"],
+                )
+                # Choisie la première option par défaut, c'est-à-dire "1 — Temps clair ou peu de nuages"
+                self.meteo.current(champ["valeur_initiale"])
+                self.meteo.grid(
+                    row=ligne, column=1, columnspan=2, sticky="w", pady=6
+                )
+
+            else:
+                raise ValueError(f"Type de champ inconnu : {type_champ}")
+
         # le bouton
         self.bouton_prediction = ttk.Button(
             self, text="Prédire", command=self._predire, state="enabled"
@@ -113,15 +154,18 @@ class BikeDataForm(tk.Tk):
         self.resultat = ttk.Label(self, text="", font=("TkDefaultFont", 11, "bold"))
         self.resultat.grid(row=11, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
-        # A REVISER CETTE SECTION : code doit être revérifié dans cette section, je ne maîtrise pas
-        # Matplotlib
-        # le graphique Matplotlib intégré à la fenêtre.
+        # (7 pouces de largeur par 3.2 pouces de hauteur).
+        # dpi=100 définit la résolution à 100 pixels par pouce
         self.figure = Figure(figsize=(7, 3.2), dpi=100)
+        # Ajout d'un sous-graphique (Axes) à la figure. 
+        # (1 ligne, 1 colonne, et on utilise le 1er (le seul) graphique)
         self.axes = self.figure.add_subplot(111)
+        # reprend la ligne 111 pour définir la taille et résolution
         self.canvas_graphique = FigureCanvasTkAgg(self.figure, master=self)
         self.canvas_graphique.get_tk_widget().grid(
             row=12, column=0, columnspan=3, sticky="ew", pady=(10, 4)
-        )
+        ) # grid peut être juste utilisé pour un widget. Hors, canvas_graphique est un objet. 
+        # Donc, get_tk_widget() retourne le widget Tkinter qui contient le graphique Matplotlib
 
         # Ca oouvre la fenêtre qui présente les prédictions sauvegardées
         ttk.Button(self, text="Consulter l’historique", command=self._ouvrir_historique).grid(
@@ -147,12 +191,14 @@ class BikeDataForm(tk.Tk):
         # titre
         ttk.Label(self, text=titre).grid(row=ligne, column=0, sticky="w", pady=6)
         # Le cadre contient les deux choix possibles, 0 et 1.
-        choix = ttk.Frame(self)
+        choix = ttk.Frame(self) # Frame est une sorte de conteneur vide
         choix.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
-        ttk.Radiobutton(choix, text="0 — Non", variable=variable, value=0).pack(
+        ttk.Radiobutton(choix, text="NON !!!", variable=variable, value=0).pack(
             side="left", padx=(0, 12)
         )
-        ttk.Radiobutton(choix, text="1 — Oui", variable=variable, value=1).pack(side="left")
+        ttk.Radiobutton(choix, text="OUI !!!", variable=variable, value=1).pack(side="left")
+        # Radiobutton permet de relier les deux cases au choix. 
+        # Donc, la valeur de choix sera déterminé par la case appuyée
 
     def _ligne_saisie(self, ligne, titre, variable, aide):
         # La fonction qui définit un peu les choses qui seront affiché et entré
@@ -168,11 +214,12 @@ class BikeDataForm(tk.Tk):
         # Affiche un rappel sur le format ou l'échelle attendue.
 
     # Ici, ca récupère les valeurs et demande la prédiction au modèle
-    def _predire(self):
+    def _predire(self) -> None:
         try:
             # La température et l'humidité sont saisies comme nombres normalisés.
             atemp = float(self.temperature_ressentie.get().strip().replace(",", "."))
             hum = float(self.humidite.get().strip().replace(",", "."))
+
             if not 0 <= atemp <= 1 or not 0 <= hum <= 1:
                 raise ValueError("atemp et hum doivent être compris entre 0 et 1.")
 
@@ -186,28 +233,46 @@ class BikeDataForm(tk.Tk):
                 "atemp": atemp,
                 "hum": hum,
             }
+
             if not 1 <= valeurs["mnth"] <= 12:
                 raise ValueError("Le mois doit être compris entre 1 et 12.")
             if not 0 <= valeurs["hr"] <= 23:
                 raise ValueError("L'heure doit être comprise entre 0 et 23.")
             if not 0 <= valeurs["weekday"] <= 6:
                 raise ValueError("Le jour de la semaine doit être compris entre 0 et 6.")
-        
-            print("Predicting using model "+ str(self.modele))
-            prediction = self.modele.predire(valeurs["mnth"], valeurs["hr"], valeurs["holiday"], valeurs["weekday"], valeurs["workingday"], valeurs["weathersit"], valeurs["atemp"], valeurs["hum"])
+
+            print("Predicting using model " + str(self.modele))
+            prediction = self.modele.predire(
+                valeurs["mnth"],
+                valeurs["hr"],
+                valeurs["holiday"],
+                valeurs["weekday"],
+                valeurs["workingday"],
+                valeurs["weathersit"],
+                valeurs["atemp"],
+                valeurs["hum"],
+            )
             self.resultat.configure(text=f"Locations prévues : {prediction:.0f}")
-            # Enregistremetn des donnees
+
+            # Enregistre les données de la prédiction.
             self._enregistrer_prediction(valeurs, prediction)
 
-            # À vérifier cette ligne de code pour s'assurer que le code fait bien son boulot
             # Compare la prédiction à la distribution de cnt.
             self._actualiser_graphique(prediction)
+
+        # Ici, on vient traiter l'exception personnalisée levée par Modele
+        except ModeleIntrouvableError as erreur:
+            messagebox.showerror("Modèle introuvable", str(erreur), parent=self)
+
+        # Ici, on vient traiter l'exception personnalisée levée par Tkinter et de saisies
         except (ValueError, tk.TclError) as erreur:
             messagebox.showerror("Valeur invalide", str(erreur), parent=self)
-        except Exception as erreur:
-            traceback.print_exc() 
-            messagebox.showerror("Erreur de prédiction", str(erreur), parent=self)
 
+        # Ici, on vient traiter l'exception personnalisée levée par 
+        # l'accès aux fichiers sans intercepter
+        except OSError as erreur:
+            messagebox.showerror("Erreur de fichier", str(erreur), parent=self)
+        
     # ajout d'une ligne à l'historique CSV.
     def _enregistrer_prediction(self, valeurs, prediction):
         colonnes = ["date_heure", *valeurs.keys(), "prediction_cnt"]
@@ -270,4 +335,3 @@ if __name__ == "__main__":
     # Crée la fenêtre puis démarre la boucle d'événements Tkinter.
     # La boucle maintient la fenêtre ouverte et détecte les actions de l'utilisateur.
     BikeDataForm().mainloop()
-

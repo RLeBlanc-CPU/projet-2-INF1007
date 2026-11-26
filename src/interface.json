@@ -1,0 +1,69 @@
+{
+  "champs": [
+    {
+      "variable": "mois",
+      "libelle": "Mois (mnth)",
+      "type": "spinbox",
+      "valeur_initiale": 1,
+      "minimum": 1,
+      "maximum": 12,
+      "aide": "De 1 à 12"
+    },
+    {
+      "variable": "heure",
+      "libelle": "Heure (hr)",
+      "type": "spinbox",
+      "valeur_initiale": 0,
+      "minimum": 0,
+      "maximum": 23,
+      "aide": "De 0 à 23"
+    },
+    {
+      "variable": "ferie",
+      "libelle": "Jour férié (holiday)",
+      "type": "binaire",
+      "valeur_initiale": 0
+    },
+    {
+      "variable": "jour_semaine",
+      "libelle": "Jour de la semaine (weekday)",
+      "type": "spinbox",
+      "valeur_initiale": 0,
+      "minimum": 0,
+      "maximum": 6,
+      "aide": "0 à 6"
+    },
+    {
+      "variable": "jour_travaille",
+      "libelle": "Jour travaillé (workingday)",
+      "type": "binaire",
+      "valeur_initiale": 0
+    },
+    {
+      "variable": "meteo",
+      "libelle": "Météo (weathersit)",
+      "type": "liste",
+      "valeur_initiale": 0,
+      "options": [
+        "1 — Temps clair ou peu de nuages",
+        "2 — Brume ou temps nuageux",
+        "3 — Pluie ou neige légère",
+        "4 — Conditions plus sévères"
+      ]
+    },
+    {
+      "variable": "temperature_ressentie",
+      "libelle": "Température ressentie (atemp)",
+      "type": "saisie",
+      "valeur_initiale": "0.50",
+      "aide": "Normalisée, de 0 à 1"
+    },
+    {
+      "variable": "humidite",
+      "libelle": "Humidité (hum)",
+      "type": "saisie",
+      "valeur_initiale": "0.50",
+      "aide": "Normalisée, de 0 à 1"
+    }
+  ]
+}
