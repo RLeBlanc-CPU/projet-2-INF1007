@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 from Data import charger_donnees
 from Data import separer_donnees
 from modele import Modele
+from exceptions import ModeleIntrouvableError
 
 """
 Je n'ai pas été capable d'ajouter des commentaires dans les fichiers
@@ -213,15 +214,12 @@ class BikeDataForm(VariablesForm, tk.Tk):
         # Affiche un rappel sur le format ou l'échelle attendue.
 
     # Ici, ca récupère les valeurs et demande la prédiction au modèle
-    def _predire(self):
+    def _predire(self) -> None:
         try:
-            # La température et l'humidité sont saisies comme nombres normalisés
-            # Rappel : strip() enlève les espaces au début et à la fin, replace() remplace
-            # les "," par des "." au cas ou on veut faire des modifications plus tard, pas de confusion avec
-            # la séparation des données. Le get() va récupèrer le texte saisi dans le champ Tkinter,
-            # puisque ces valeurs sont entrées manuellement
+            # La température et l'humidité sont saisies comme nombres normalisés.
             atemp = float(self.temperature_ressentie.get().strip().replace(",", "."))
             hum = float(self.humidite.get().strip().replace(",", "."))
+
             if not 0 <= atemp <= 1 or not 0 <= hum <= 1:
                 raise ValueError("atemp et hum doivent être compris entre 0 et 1.")
 
@@ -235,27 +233,45 @@ class BikeDataForm(VariablesForm, tk.Tk):
                 "atemp": atemp,
                 "hum": hum,
             }
+
             if not 1 <= valeurs["mnth"] <= 12:
                 raise ValueError("Le mois doit être compris entre 1 et 12.")
             if not 0 <= valeurs["hr"] <= 23:
                 raise ValueError("L'heure doit être comprise entre 0 et 23.")
             if not 0 <= valeurs["weekday"] <= 6:
                 raise ValueError("Le jour de la semaine doit être compris entre 0 et 6.")
-        
-            print("Predicting using model "+ str(self.modele))
-            prediction = self.modele.predire(valeurs["mnth"], valeurs["hr"], valeurs["holiday"], valeurs["weekday"], valeurs["workingday"], valeurs["weathersit"], valeurs["atemp"], valeurs["hum"])
+
+            print("Predicting using model " + str(self.modele))
+            prediction = self.modele.predire(
+                valeurs["mnth"],
+                valeurs["hr"],
+                valeurs["holiday"],
+                valeurs["weekday"],
+                valeurs["workingday"],
+                valeurs["weathersit"],
+                valeurs["atemp"],
+                valeurs["hum"],
+            )
             self.resultat.configure(text=f"Locations prévues : {prediction:.0f}")
-            # Enregistremetn des donnees
+
+            # Enregistre les données de la prédiction.
             self._enregistrer_prediction(valeurs, prediction)
 
-            # À vérifier cette ligne de code pour s'assurer que le code fait bien son boulot
             # Compare la prédiction à la distribution de cnt.
             self._actualiser_graphique(prediction)
+
+        # Ici, on vient traiter l'exception personnalisée levée par Modele
+        except ModeleIntrouvableError as erreur:
+            messagebox.showerror("Modèle introuvable", str(erreur), parent=self)
+
+        # Ici, on vient traiter l'exception personnalisée levée par Tkinter et de saisies
         except (ValueError, tk.TclError) as erreur:
             messagebox.showerror("Valeur invalide", str(erreur), parent=self)
-        except Exception as erreur:
-            traceback.print_exc() 
-            messagebox.showerror("Erreur de prédiction", str(erreur), parent=self)
+
+        # Ici, on vient traiter l'exception personnalisée levée par 
+        # l'accès aux fichiers sans intercepter
+        except OSError as erreur:
+            messagebox.showerror("Erreur de fichier", str(erreur), parent=self)
 
     # ajout d'une ligne à l'historique CSV.
     def _enregistrer_prediction(self, valeurs, prediction):

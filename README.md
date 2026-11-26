@@ -77,4 +77,17 @@ Un fichier tests/test est présent, et il a permis d'executer des tests pour s'a
 
 ## Outil du chapitre 7 utilisé
 
-(À faire : ajouter décorateur, lambda, générateur)
+(À faire : ajouter lambda, générateur)
+Un décorateur à été ajouté dans modele.py. Il permet de calculer la durée d'exécution de la fonction décorée:
+
+def chronometrer(fonction: F) -> F:
+    """Affiche la durée d'exécution de la fonction décorée."""
+    @wraps(fonction)
+    def fonction_mesuree(*args: Any, **kwargs: Any) -> Any:
+        debut = perf_counter()
+        resultat = fonction(*args, **kwargs)
+        duree = perf_counter() - debut
+        print(f"Durée de {fonction.__name__} : {duree:.2f} s")
+        return resultat
+
+    return cast(F, fonction_mesuree)
