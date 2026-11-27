@@ -38,11 +38,11 @@ projet-2-INF1007/
 │   ├── hour.csv
 │   └── Readme.txt
 ├── modele/
-│   └── modele.joblib
+│   ├── modele.joblib
+│   └── interface.json
 ├── src/
 │   ├── Data.py
 │   ├── exceptions.py
-│   ├── interface.json
 │   ├── interface.py
 │   ├── main.py
 │   ├── modele.py

@@ -50,8 +50,7 @@ class TestChargement:
 
 class TestPrediction:
     def test_predire_sans_modele_leve_une_erreur(self):
-        # À remplacer par ModeleIntrouvableError quand l'exception custom sera utilisée
-        with pytest.raises((IOError, Exception)):
+        with pytest.raises(ModeleIntrouvableError):
             Modele().predire(*EXEMPLE)
 
     def test_predire_retourne_un_nombre_positif(self, modele_entraine):

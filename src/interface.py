@@ -199,7 +199,7 @@ class BikeDataForm(tk.Tk):
         self.variables = [creer_variable(nom, self.meta) for nom in self.colonnes]
         self.colonne_prediction = f"prediction_{self.meta['cible']['nom']}"
         self.chemin_historique = (
-            Path(__file__).resolve().parent / "historique_predictions.csv"
+            Path(__file__).resolve().parent.parent / "modele" / "historique_predictions.csv"
         )
 
         self.title("Prédiction des locations de vélos")

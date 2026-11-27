@@ -15,7 +15,6 @@ class TestChargerDonnees:
             assert colonne not in df.columns
 
     def test_aucune_fuite_de_la_cible(self, faux_projet):
-        # casual + registered = cnt : les garder rendrait le modèle trivial
         df = Data.charger_donnees()
         assert "casual" not in df.columns
         assert "registered" not in df.columns

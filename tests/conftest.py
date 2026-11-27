@@ -1,15 +1,3 @@
-"""Configuration commune des tests.
-
-Hypothèse de structure du projet :
-
-    projet/
-      src/        <- main.py, Data.py, modele.py, interface.py, exceptions.py
-      donnees/    <- hour.csv
-      modele/     <- modele.joblib (créé automatiquement)
-      tests/      <- ce dossier
-
-Si tes .py sont à la racine du projet, le code ci-dessous fonctionne aussi.
-"""
 import sys
 from pathlib import Path
 
@@ -55,7 +43,6 @@ def faux_hour_df():
         "casual": rng.integers(0, 50, n),
         "registered": rng.integers(0, 200, n),
     })
-    # cnt dépend de l'heure : le modèle a quelque chose à apprendre
     df["cnt"] = (hr * 8 + df["atemp"] * 50).round().astype(int)
     return df[COLONNES_BRUTES]
 
