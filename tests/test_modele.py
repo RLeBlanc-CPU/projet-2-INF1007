@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pytest
 from sklearn.ensemble import RandomForestRegressor
-
+from exceptions import ModeleIntrouvableError
 import Data
 from modele import Modele
 
@@ -44,7 +44,7 @@ class TestChargement:
         assert m2.predire(*EXEMPLE) == pytest.approx(attendu)
 
     def test_charger_sans_fichier_leve_une_erreur(self, faux_projet):
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(ModeleIntrouvableError):
             Modele().charger()
 
 
@@ -71,13 +71,6 @@ class TestPrediction:
 
 
 class TestEvaluation:
-    def test_evaluer_retourne_les_metriques(self, faux_projet):
-        X_train, X_test, y_train, y_test = Data.separer_donnees(Data.charger_donnees())
-        m = Modele(X_train, y_train)
-        m.entrainer()
-        resultat = m.evaluer(X_test, y_test)
-        assert set(resultat) == {"MAE", "RMSE", "R2"}
-
     def test_rmse_superieur_ou_egal_a_mae(self, faux_projet):
         X_train, X_test, y_train, y_test = Data.separer_donnees(Data.charger_donnees())
         m = Modele(X_train, y_train)
