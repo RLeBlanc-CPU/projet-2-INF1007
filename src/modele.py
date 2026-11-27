@@ -14,7 +14,10 @@ from typing import Any, Callable, TypeVar, cast
 
 F = TypeVar("F", bound=Callable[..., Any])
 
+# Colonnes traitées comme catégorielles dans les métadonnées. Les autres
+# colonnes (mnth, hr, atemp, hum) sont décrites par un intervalle [min, max].
 COLONNES_CATEGORIELLES = ("holiday", "weekday", "workingday", "weathersit")
+
 
 # Décorateur qui mesure et affiche la durée de la fonction.
 def chronometrer(fonction: F) -> F:
@@ -52,7 +55,7 @@ class Modele:
         self.model.fit(self.donnees, self.cible)
         joblib.dump(self.model, self.trouver_modele())
 
-    # Charge un ancien modèle 
+    # Charge un ancien modèle + lève l'exception personnalisée
     def charger(self) -> None:
         """Charge le modèle sauvegardé ou signale si son fichier est absent."""
         chemin = self.trouver_modele()
@@ -73,37 +76,6 @@ class Modele:
         os.makedirs(model_dir, exist_ok=True)
         output_file = os.path.join(model_dir, "modele.joblib")
         return output_file
-
-    def predire(
-        self,
-        mnth: int,
-        hr: int,
-        holiday: int,
-        weekday: int,
-        workingday: int,
-        weathersit: int,
-        atemp: float,
-        hum: float,
-    ) -> float:
-        """retourne le nombre prédit de locations pour les caractéristiques fournies"""
-        if self.model is None:
-            raise ModeleIntrouvableError("Aucun modèle n'est chargé.")
-
-        return self.model.predict(
-            [[mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum]]
-        )[0]
-
-    def evaluer(self, donnees_test, cible_test) -> dict[str, float]:
-        """Calcule les métriques MAE, RMSE et R² sur les données de test."""
-        if self.model is None:
-            self.charger()
-
-        predictions = self.model.predict(donnees_test)
-        return {
-            "MAE": mean_absolute_error(cible_test, predictions),
-            "RMSE": np.sqrt(mean_squared_error(cible_test, predictions)),
-            "R2": r2_score(cible_test, predictions),
-        }
 
     # Fichier de métadonnées, rangé à côté du modèle sauvegardé
     def trouver_metadonnees(self) -> str:
@@ -182,6 +154,54 @@ class Modele:
         with open(chemin, "r", encoding="utf-8") as fichier:
             return json.load(fichier)
 
+    def predire(
+        self,
+        mnth: int,
+        hr: int,
+        holiday: int,
+        weekday: int,
+        workingday: int,
+        weathersit: int,
+        atemp: float,
+        hum: float,
+    ) -> float:
+        """retourne le nombre prédit de locations pour les caractéristiques fournies"""
+        if self.model is None:
+            raise ModeleIntrouvableError("Aucun modèle n'est chargé.")
+
+        return self.model.predict(
+            [[mnth, hr, holiday, weekday, workingday, weathersit, atemp, hum]]
+        )[0]
+
+    def evaluer(self, donnees_test, cible_test) -> dict[str, float]:
+        """Calcule les métriques MAE, RMSE et R² sur les données de test, et les
+        compare à une référence naïve qui prédit toujours la moyenne."""
+        if self.model is None:
+            self.charger()
+
+        predictions = self.model.predict(donnees_test)
+        mae = mean_absolute_error(cible_test, predictions)
+        rmse = np.sqrt(mean_squared_error(cible_test, predictions))
+
+        # Comparaison vectorisée (numpy, sans boucle) : erreur d'une référence
+        # qui prédit la moyenne de l'entraînement (ou des données de test si
+        # les données d'entraînement ne sont pas disponibles).
+        reel = np.asarray(cible_test, dtype=float)
+        moyenne = np.mean(self.cible) if self.cible is not None else reel.mean()
+        ecarts = reel - moyenne  # un seul calcul sur tout le tableau
+        mae_reference = np.mean(np.abs(ecarts))
+        rmse_reference = np.sqrt(np.mean(ecarts**2))
+
+        return {
+            "MAE": mae,
+            "RMSE": rmse,
+            "R2": r2_score(cible_test, predictions),
+            "MAE_reference": mae_reference,
+            "RMSE_reference": rmse_reference,
+            # Réduction de l'erreur du modèle par rapport à la référence, en %.
+            "gain_MAE_pct": 100 * (1 - mae / mae_reference),
+            "gain_RMSE_pct": 100 * (1 - rmse / rmse_reference),
+        }
 
     def __str__(self) -> str:
         """Retourne une représentation textuelle du modèle."""

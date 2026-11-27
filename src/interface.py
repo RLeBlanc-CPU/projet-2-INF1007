@@ -1,5 +1,29 @@
+"""
+L'interface se construit à partir de modele/metadonnees.json (créé par
+Modele.creer_metadonnees) : noms des colonnes, valeurs possibles des variables
+catégorielles et intervalles des variables numériques.
+
+Chaque colonne devient un objet Variable. La classe Variable est abstraite : elle
+impose deux méthodes que chaque classe enfant redéfinit à sa façon (polymorphisme).
+
+    Variable (abstraite)
+    ├── VariableNumerique       -> spinbox ou saisie ; valide l'intervalle [min, max]
+    └── VariableCategorielle    -> liste déroulante ; valide le choix dans la liste
+        └── VariableBinaire     -> boutons radio Non / Oui ; valide que la valeur est 0 ou 1
+
+    _creer_widget(parent, ligne) : crée le widget de saisie
+    lire()                       : lit la saisie, la valide et retourne la valeur
+
+Le formulaire n'a pas besoin de connaître le type de chaque variable : il appelle
+simplement variable.construire() puis variable.lire().
+
+Les métadonnées décrivent les données, pas leur affichage : les libellés
+lisibles sont donc définis ici.
+"""
+
 import csv
 import tkinter as tk
+from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -9,21 +33,6 @@ from matplotlib.figure import Figure
 
 from exceptions import ModeleIntrouvableError
 from modele import Modele
-
-"""
-L'interface se construit à partir de modele/metadonnees.json (créé par
-Modele.creer_metadonnees) : noms des colonnes, valeurs possibles des variables
-catégorielles et intervalles des variables numériques. Le widget de chaque champ
-est choisi selon ces métadonnées :
-
-    catégorielle {0, 1}  -> boutons radio Non / Oui
-    catégorielle autre   -> liste déroulante
-    numérique entière    -> spinbox
-    numérique décimale   -> zone de saisie
-
-Les métadonnées décrivent les données, pas leur affichage : les libellés
-lisibles sont donc définis ici.
-"""
 
 LIBELLES = {
     "mnth": "Mois",
@@ -48,6 +57,136 @@ LIBELLES_VALEURS = {
 }
 
 
+# Variables du formulaire
+class Variable(ABC):
+    """Classe parente : une colonne du modèle et le widget qui permet de la saisir."""
+
+    def __init__(self, nom: str) -> None:
+        self.nom = nom
+
+    @property
+    def libelle(self) -> str:
+        return LIBELLES.get(self.nom, self.nom)
+
+    def construire(self, parent: tk.Widget, ligne: int) -> None:
+        """Place le libellé, puis laisse la classe enfant créer son widget."""
+        ttk.Label(parent, text=self.libelle).grid(row=ligne, column=0, sticky="w", pady=6)
+        self._creer_widget(parent, ligne)
+
+    @abstractmethod
+    def _creer_widget(self, parent: tk.Widget, ligne: int) -> None:
+        """Crée le widget de saisie (propre à chaque type de variable)."""
+
+    @abstractmethod
+    def lire(self):
+        """Retourne la valeur saisie, validée. Lève ValueError si elle est invalide."""
+
+
+class VariableNumerique(Variable):
+    """Variable décrite par un intervalle [minimum, maximum]."""
+
+    def __init__(self, nom: str, minimum: float, maximum: float) -> None:
+        super().__init__(nom)
+        self.minimum = minimum
+        self.maximum = maximum
+        self.entier = isinstance(minimum, int) and isinstance(maximum, int)
+        self._saisie = None
+
+    def _creer_widget(self, parent: tk.Widget, ligne: int) -> None:
+        initiale = (
+            self.minimum if self.entier else round((self.minimum + self.maximum) / 2, 2)
+        )
+        self._saisie = tk.StringVar(value=str(initiale))
+        if self.entier:
+            widget = ttk.Spinbox(
+                parent, from_=self.minimum, to=self.maximum,
+                textvariable=self._saisie, width=8,
+            )
+        else:
+            widget = ttk.Entry(parent, textvariable=self._saisie, width=12)
+        widget.grid(row=ligne, column=1, sticky="w", pady=6)
+
+        ttk.Label(
+            parent, text=f"entre {self.minimum} et {self.maximum}", foreground="#555"
+        ).grid(row=ligne, column=2, sticky="w", padx=(8, 0))
+
+    def lire(self) -> float:
+        texte = self._saisie.get().strip().replace(",", ".")
+        try:
+            valeur = int(texte) if self.entier else float(texte)
+        except ValueError:
+            genre = "un nombre entier" if self.entier else "un nombre"
+            raise ValueError(f"« {self.libelle} » doit être {genre}.") from None
+
+        if not self.minimum <= valeur <= self.maximum:
+            raise ValueError(
+                f"« {self.libelle} » doit être compris entre "
+                f"{self.minimum} et {self.maximum}."
+            )
+        return valeur
+
+
+class VariableCategorielle(Variable):
+    """Variable dont les valeurs possibles forment une liste."""
+
+    def __init__(self, nom: str, valeurs: list) -> None:
+        super().__init__(nom)
+        self.valeurs = valeurs
+        self._liste = None
+
+    def _creer_widget(self, parent: tk.Widget, ligne: int) -> None:
+        libelles = LIBELLES_VALEURS.get(self.nom, {})
+        self._liste = ttk.Combobox(
+            parent,
+            state="readonly",  # l'utilisateur ne peut pas saisir de valeur libre
+            width=38,
+            values=[libelles.get(v, str(v)) for v in self.valeurs],
+        )
+        self._liste.current(0)
+        self._liste.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
+
+    def lire(self):
+        indice = self._liste.current()
+        if indice == -1:
+            raise ValueError(f"Choisissez une valeur pour « {self.libelle} ».")
+        return self.valeurs[indice]
+
+
+class VariableBinaire(VariableCategorielle):
+    """Variable catégorielle à deux valeurs, 0 et 1 : affichée en Non / Oui."""
+
+    def __init__(self, nom: str, valeurs: list) -> None:
+        super().__init__(nom, valeurs)
+        self._choix = None
+
+    def _creer_widget(self, parent: tk.Widget, ligne: int) -> None:
+        self._choix = tk.IntVar(value=0)
+        cadre = ttk.Frame(parent)
+        cadre.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
+        ttk.Radiobutton(cadre, text="Non", variable=self._choix, value=0).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Radiobutton(cadre, text="Oui", variable=self._choix, value=1).pack(side="left")
+
+    def lire(self) -> int:
+        valeur = self._choix.get()
+        if valeur not in self.valeurs:
+            raise ValueError(f"« {self.libelle} » doit être 0 ou 1.")
+        return valeur
+
+
+def creer_variable(nom: str, meta: dict) -> Variable:
+    """Choisit la classe de variable selon ce que dit le JSON sur la colonne."""
+    valeurs = meta["categorielles"].get(nom)
+    if valeurs is None:
+        intervalle = meta["numeriques"][nom]
+        return VariableNumerique(nom, intervalle["min"], intervalle["max"])
+    if set(valeurs) == {0, 1}:
+        return VariableBinaire(nom, valeurs)
+    return VariableCategorielle(nom, valeurs)
+
+
+# Fenêtre principale
 class BikeDataForm(tk.Tk):
     def __init__(self, modele: Modele) -> None:
         # Lecture des métadonnées avant de créer la fenêtre : si le fichier est
@@ -57,20 +196,17 @@ class BikeDataForm(tk.Tk):
 
         self.modele = modele
         self.colonnes = self.meta["colonnes"]
+        self.variables = [creer_variable(nom, self.meta) for nom in self.colonnes]
         self.colonne_prediction = f"prediction_{self.meta['cible']['nom']}"
         self.chemin_historique = (
             Path(__file__).resolve().parent / "historique_predictions.csv"
         )
-        # Nom de colonne -> fonction qui lit (et valide) la valeur du widget.
-        self.lecteurs = {}
 
         self.title("Prédiction des locations de vélos")
         self.configure(padx=18, pady=16)
         self._construire_interface()
 
-    # ------------------------------------------------------------------
     # Construction de l'interface
-    # ------------------------------------------------------------------
     def _construire_interface(self) -> None:
         ttk.Label(
             self,
@@ -78,10 +214,11 @@ class BikeDataForm(tk.Tk):
             font=("TkDefaultFont", 13, "bold"),
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
 
-        for ligne, nom in enumerate(self.colonnes, start=1):
-            self._ajouter_champ(ligne, nom)
+        # Polymorphisme : chaque variable construit son propre widget.
+        for ligne, variable in enumerate(self.variables, start=1):
+            variable.construire(self, ligne)
 
-        ligne = len(self.colonnes) + 1
+        ligne = len(self.variables) + 1
         ttk.Button(self, text="Prédire", command=self._predire).grid(
             row=ligne, column=0, columnspan=3, sticky="ew", pady=6
         )
@@ -105,90 +242,27 @@ class BikeDataForm(tk.Tk):
             ),
             foreground="#555",
         ).grid(row=ligne + 3, column=0, columnspan=3, sticky="w")
+        ttk.Label(
+            self,
+            text=(
+                "Référence (prédire toujours la moyenne) — "
+                f"MAE : {metriques['MAE_reference']:.1f}"
+                f" · RMSE : {metriques['RMSE_reference']:.1f}"
+                f"  →  erreur réduite de {metriques['gain_MAE_pct']:.0f} % (MAE)"
+                f" et {metriques['gain_RMSE_pct']:.0f} % (RMSE)"
+            ),
+            foreground="#555",
+        ).grid(row=ligne + 4, column=0, columnspan=3, sticky="w")
 
         ttk.Button(
             self, text="Consulter l’historique", command=self._ouvrir_historique
         ).grid(row=1, column=3, sticky="ew", padx=(12, 0), pady=(4, 0))
 
-    def _ajouter_champ(self, ligne: int, nom: str) -> None:
-        """Crée le libellé et le widget d'une colonne selon ses métadonnées."""
-        ttk.Label(self, text=LIBELLES.get(nom, nom)).grid(
-            row=ligne, column=0, sticky="w", pady=6
-        )
-
-        valeurs = self.meta["categorielles"].get(nom)
-        if valeurs is None:
-            self._champ_numerique(ligne, nom, self.meta["numeriques"][nom])
-        elif set(valeurs) == {0, 1}:
-            self._champ_binaire(ligne, nom)
-        else:
-            self._champ_liste(ligne, nom, valeurs)
-
-    def _champ_binaire(self, ligne: int, nom: str) -> None:
-        variable = tk.IntVar(value=0)
-        cadre = ttk.Frame(self)
-        cadre.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
-        ttk.Radiobutton(cadre, text="Non", variable=variable, value=0).pack(
-            side="left", padx=(0, 12)
-        )
-        ttk.Radiobutton(cadre, text="Oui", variable=variable, value=1).pack(side="left")
-        self.lecteurs[nom] = variable.get
-
-    def _champ_liste(self, ligne: int, nom: str, valeurs: list) -> None:
-        libelles = LIBELLES_VALEURS.get(nom, {})
-        liste = ttk.Combobox(
-            self,
-            state="readonly",  # l'utilisateur ne peut pas saisir de valeur libre
-            width=38,
-            values=[libelles.get(v, str(v)) for v in valeurs],
-        )
-        liste.current(0)
-        liste.grid(row=ligne, column=1, columnspan=2, sticky="w", pady=6)
-        self.lecteurs[nom] = lambda: valeurs[liste.current()]
-
-    def _champ_numerique(self, ligne: int, nom: str, intervalle: dict) -> None:
-        minimum, maximum = intervalle["min"], intervalle["max"]
-        entier = isinstance(minimum, int) and isinstance(maximum, int)
-
-        initiale = minimum if entier else round((minimum + maximum) / 2, 2)
-        variable = tk.StringVar(value=str(initiale))
-        if entier:
-            widget = ttk.Spinbox(
-                self, from_=minimum, to=maximum, textvariable=variable, width=8
-            )
-        else:
-            widget = ttk.Entry(self, textvariable=variable, width=12)
-        widget.grid(row=ligne, column=1, sticky="w", pady=6)
-
-        ttk.Label(self, text=f"entre {minimum} et {maximum}", foreground="#555").grid(
-            row=ligne, column=2, sticky="w", padx=(8, 0)
-        )
-        self.lecteurs[nom] = lambda: self._lire_nombre(nom, variable, intervalle, entier)
-
-    @staticmethod
-    def _lire_nombre(nom: str, variable: tk.StringVar, intervalle: dict, entier: bool):
-        """Convertit la saisie en nombre et vérifie qu'elle est dans l'intervalle."""
-        libelle = LIBELLES.get(nom, nom)
-        texte = variable.get().strip().replace(",", ".")
-        try:
-            valeur = int(texte) if entier else float(texte)
-        except ValueError:
-            genre = "un nombre entier" if entier else "un nombre"
-            raise ValueError(f"« {libelle} » doit être {genre}.") from None
-
-        minimum, maximum = intervalle["min"], intervalle["max"]
-        if not minimum <= valeur <= maximum:
-            raise ValueError(
-                f"« {libelle} » doit être compris entre {minimum} et {maximum}."
-            )
-        return valeur
-
-    # ------------------------------------------------------------------
     # Prédiction, historique et graphique
-    # ------------------------------------------------------------------
     def _predire(self) -> None:
         try:
-            valeurs = {nom: lire() for nom, lire in self.lecteurs.items()}
+            # Polymorphisme : chaque variable valide sa saisie à sa façon.
+            valeurs = {variable.nom: variable.lire() for variable in self.variables}
             prediction = self.modele.predire(**valeurs)
             self.resultat.configure(text=f"Locations prévues : {prediction:.0f}")
             self._enregistrer_prediction(valeurs, prediction)
