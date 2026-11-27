@@ -23,7 +23,7 @@ if __name__ == "__main__":
         modele.creer_metadonnees(donnees_separees[1], donnees_separees[3])
     cible = charger_donnees()["cnt"]
 
-    interface = BikeDataForm(modele, cible)
+    interface = BikeDataForm(modele)
     interface.mainloop()
 
  
