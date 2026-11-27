@@ -36,7 +36,6 @@ def chronometrer(fonction: F) -> F:
 class Modele:
     # Initialise le modele. On doit charger un ancien modèle OU entraîner un
     # nouveau modèle avant de prédire.
-    # Ajout du type de retour
     def __init__(self, donnees=None, cible=None) -> None:
         """Initialise le modèle avec les données et la cible, si elles sont fournies."""
         self.donnees = donnees
@@ -183,9 +182,6 @@ class Modele:
         mae = mean_absolute_error(cible_test, predictions)
         rmse = np.sqrt(mean_squared_error(cible_test, predictions))
 
-        # Comparaison vectorisée (numpy, sans boucle) : erreur d'une référence
-        # qui prédit la moyenne de l'entraînement (ou des données de test si
-        # les données d'entraînement ne sont pas disponibles).
         reel = np.asarray(cible_test, dtype=float)
         moyenne = np.mean(self.cible) if self.cible is not None else reel.mean()
         ecarts = reel - moyenne  # un seul calcul sur tout le tableau

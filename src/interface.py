@@ -1,26 +1,3 @@
-"""
-L'interface se construit à partir de modele/metadonnees.json (créé par
-Modele.creer_metadonnees) : noms des colonnes, valeurs possibles des variables
-catégorielles et intervalles des variables numériques.
-
-Chaque colonne devient un objet Variable. La classe Variable est abstraite : elle
-impose deux méthodes que chaque classe enfant redéfinit à sa façon (polymorphisme).
-
-    Variable (abstraite)
-    ├── VariableNumerique       -> spinbox ou saisie ; valide l'intervalle [min, max]
-    └── VariableCategorielle    -> liste déroulante ; valide le choix dans la liste
-        └── VariableBinaire     -> boutons radio Non / Oui ; valide que la valeur est 0 ou 1
-
-    _creer_widget(parent, ligne) : crée le widget de saisie
-    lire()                       : lit la saisie, la valide et retourne la valeur
-
-Le formulaire n'a pas besoin de connaître le type de chaque variable : il appelle
-simplement variable.construire() puis variable.lire().
-
-Les métadonnées décrivent les données, pas leur affichage : les libellés
-lisibles sont donc définis ici.
-"""
-
 import csv
 import tkinter as tk
 from abc import ABC, abstractmethod
@@ -214,7 +191,6 @@ class BikeDataForm(tk.Tk):
             font=("TkDefaultFont", 13, "bold"),
         ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
 
-        # Polymorphisme : chaque variable construit son propre widget.
         for ligne, variable in enumerate(self.variables, start=1):
             variable.construire(self, ligne)
 
@@ -261,7 +237,6 @@ class BikeDataForm(tk.Tk):
     # Prédiction, historique et graphique
     def _predire(self) -> None:
         try:
-            # Polymorphisme : chaque variable valide sa saisie à sa façon.
             valeurs = {variable.nom: variable.lire() for variable in self.variables}
             prediction = self.modele.predire(**valeurs)
             self.resultat.configure(text=f"Locations prévues : {prediction:.0f}")
@@ -330,7 +305,7 @@ class BikeDataForm(tk.Tk):
         tableau.pack(side="left", fill="both", expand=True)
         barre.pack(side="right", fill="y")
 
-        # Si aucune prédiction n'a encore été faite, le tableau reste vide.
+        # Aucune prédictoin
         if self.chemin_historique.exists():
             with self.chemin_historique.open("r", newline="", encoding="utf-8") as fichier:
                 for ligne in csv.DictReader(fichier):
@@ -338,7 +313,6 @@ class BikeDataForm(tk.Tk):
 
 
 if __name__ == "__main__":
-    # Aucun entraînement ici : on charge le modèle et les métadonnées sauvegardés.
     modele = Modele()
     try:
         modele.charger()

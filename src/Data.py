@@ -19,9 +19,8 @@ VARIABLE_CIBLE = "cnt"
 
 def charger_donnees() -> pd.DataFrame:
     """
-    Verifie si le fichier  existe. S'il n'existe pas, le code va dire:
-    "EILLLLLE, CA N'EXISTE PAS! Tsssss, tu me fais perdre mon temps". Ensuite, si 
-    le fichier existe, alors la fonction ouvre le fichier avec "r" et encapsule toutes 
+    Verifie si le fichier  existe.
+    Si le fichier existe, alors la fonction ouvre le fichier avec "r" et encapsule toutes 
     les donnes dans "donnees_completes. Puis, la fonction filtre les donnees et retourne 
     les bonnes donnees"
     """
@@ -43,16 +42,15 @@ def charger_donnees() -> pd.DataFrame:
     return donnees_filtree
 
 def separer_donnees( donnees: pd.DataFrame ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-        
-        # Prend toutes les colonnes, sauf la variable cible
+    # Prend toutes les colonnes, sauf la variable cible
     x = donnees.drop(columns=[VARIABLE_CIBLE])
     y = donnees[VARIABLE_CIBLE]
-
-    # Ça appelle train_test_split, et ensuite range ses quatre résultats
-    # dans quatre variables. L’ordre est très important pour ne pas mêler
-    # les données : les deux premiers contiennent des différents facteurs,
-    # les deux autres (en ordre) contiennent les valeurs de la cible associées.
+    """
+    Ça appelle train_test_split, et ensuite range ses quatre résultats
+    dans quatre variables. L’ordre est très important pour ne pas mêler
+    les données : les deux premiers contiennent des différents facteurs,
+    les deux autres (en ordre) contiennent les valeurs de la cible associées.
+    """
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42 )
-
     return X_train, X_test, y_train, y_test
 
