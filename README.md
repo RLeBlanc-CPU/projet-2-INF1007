@@ -16,13 +16,12 @@ La description des données précise qu'il faut citer la publication suivante da
 
 ## Commandes d'installation et de lancement
 
-Tout en tenant compte du dossier contenant la racine du dépôt, il sera important d'installer les bibliothèques suivantes :
-
+Dans l'environnement virtuel de votre choix, utilisez le fichier `requirements.txt` pour installer les dépendances nécessaires.
 ```bash
-python -m pip install pandas matplotlib scikit-learn joblib numpy
+pip install --upgrade -r requirements.txt
 ```
 
-Puis, depuis le dossier src, lancez l'application :
+Puis, depuis le dossier du projet, lancez l'application :
 
 ```bash
 python src/main.py
@@ -39,23 +38,25 @@ projet-2-INF1007/
 │   └── Readme.txt
 ├── modele/
 │   ├── modele.joblib
-│   └── interface.json
+│   ├── interface.json
+│   └── historique_predictions.csv
 ├── src/
 │   ├── Data.py
 │   ├── exceptions.py
 │   ├── interface.py
 │   ├── main.py
 │   ├── modele.py
-│   └── historique_predictions.csv
 └── tests/
-    └── test
+    ├── conftest.py
+    ├── pytest.ini
+    ├── test_data.py
+    └── test_modele.py
 ```
 
-- src/Data.py charge le CSV, retire les colonnes qui devront être exclues et sépare les données pertinentes pour le modèle. Il contient également une fonction qui g.nère un graphique.
-- src/modele.py entraîne, sauvegarde et charge le modèle. Il effectue les prédictions.
-- src/interface.py construit l'interface Tkinter, affiche la prédiction sous format d'histogramme et s'occupe de l'historique.
-- src/interface.json décrit les champs de saisie et leurs options/valeurs initiales.
-- src/main.py coordonne le chargement ou l'entraînement du modèle et l'ouverture de l'interface.
+- src/Data.py charge le CSV, retire les colonnes qui devront être exclues et sépare les données pertinentes pour le modèle.
+- src/modele.py entraîne, sauvegarde et charge le modèle. Il effectue les prédictions. Il génère également les métadonnées requises pour l'interface.
+- src/interface.py construit l'interface Tkinter à partir des métadonnées, affiche la prédiction sous format d'histogramme et s'occupe de l'historique.
+- src/main.py est le point d'entrée du programme. Il coordonne le chargement ou l'entraînement du modèle et l'ouverture de l'interface.
 - src/exceptions.py gère les exceptions.
 
 ## Résultat du modèle (métrique et référence)
@@ -66,7 +67,18 @@ Le problème que nous avons choisi est celle de la régression, car elle permet 
 
 ## Couverture de tests
 
-Un fichier tests/test est présent, et il a permis d'executer des tests pour s'assurer que le programme fonctionnait correctement. Cependant, il n'est pas complété. (À faire : compléter les tests)
+Rapport de issu de la commande `coverage report -m`
+
+Name                   Stmts   Miss  Cover   Missing
+----------------------------------------------------
+src/Data.py               36     11    69%   62-73
+src/exceptions.py          2      0   100%
+src/modele.py             82     17    79%   83, 93-143, 147-155
+tests/conftest.py         29      0   100%
+tests/test_data.py        50      2    96%   32-33
+tests/test_modele.py      79      2    97%   102-103
+----------------------------------------------------
+TOTAL                    278     32    88%
 
 ## Références à la documentation
 
@@ -77,9 +89,9 @@ Un fichier tests/test est présent, et il a permis d'executer des tests pour s'a
 
 ## Outil du chapitre 7 utilisé
 
-(À faire : ajouter lambda, générateur)
 Un décorateur à été ajouté dans modele.py. Il permet de calculer la durée d'exécution de la fonction décorée:
 
+```
 def chronometrer(fonction: F) -> F:
     """Affiche la durée d'exécution de la fonction décorée."""
     @wraps(fonction)
@@ -91,3 +103,4 @@ def chronometrer(fonction: F) -> F:
         return resultat
 
     return cast(F, fonction_mesuree)
+```

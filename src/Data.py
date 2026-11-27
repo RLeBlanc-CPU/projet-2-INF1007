@@ -56,18 +56,3 @@ def separer_donnees( donnees: pd.DataFrame ) -> tuple[pd.DataFrame, pd.DataFrame
 
     return X_train, X_test, y_train, y_test
 
-
-## Reste a valider (ChatGPT)
-def creer_graphique_par_heure(donnees: pd.DataFrame, chemin_image: str,) -> None:
-    heures = donnees.groupby("hr")["cnt"].mean()
-
-    plt.figure(figsize=(9, 5))
-    plt.plot(heures.index, heures.values, marker="o")
-    plt.title("Nombre moyen de locations de vélos par heure")
-    plt.xlabel("Heure de la journée")
-    plt.ylabel("Nombre moyen de locations")
-    plt.xticks(range(24))
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(chemin_image)
-    plt.close()
